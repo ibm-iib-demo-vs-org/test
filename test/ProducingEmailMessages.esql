@@ -1,0 +1,44 @@
+
+
+DECLARE ns NAMESPACE 'urn:esbbank.com/gbo/xml/schemas/v1_0/';
+
+
+CREATE COMPUTE MODULE ProducingEmailMessages
+	CREATE FUNCTION Main() RETURNS BOOLEAN
+	BEGIN
+		-- CALL CopyMessageHeaders();
+		-- CALL CopyEntireMessage();
+		-- Add recipient information to the EmailOutputHeader
+		DECLARE inputEmailMessage REFERENCE TO InputRoot.XMLNSC.ns:EmailRequest.ns:eAI_BODY.ns:EmailMessage;
+		SET OutputRoot.EmailOutputHeader.To[] = inputEmailMessage.ns:toEmailAddress[];
+		-- Add sender information to EmailOutputHeader
+		SET OutputRoot.EmailOutputHeader.From = inputEmailMessage.ns:fromAddress;
+		-- Add subject to EmailOutputHeader
+		SET OutputRoot.EmailOutputHeader.Subject = inputEmailMessage.ns:subject;
+		-- Add SMTP server information to the LocalEnvironment
+		SET OutputLocalEnvironment.Destination.Email.SMTPServer ='mail.valleysoft-eg.com:25';
+		SET OutputLocalEnvironment.Destination.Email.BodyContentType = 'text/plain';
+		-- Create a new message body, which will be sent as the main text of the email.
+		SET OutputRoot.BLOB.BLOB = CAST('This is the new text for the body of the email.' AS BLOB CCSID 1208);	
+		SET OutputLocalEnvironment.Destination.Email.SecurityIdentity = 'Mail_Identity';	
+
+
+		RETURN TRUE;
+	END;
+
+	CREATE PROCEDURE CopyMessageHeaders() BEGIN
+		DECLARE I INTEGER 1;
+		DECLARE J INTEGER;
+		SET J = CARDINALITY(InputRoot.*[]);
+		WHILE I < J DO
+			SET OutputRoot.*[I] = InputRoot.*[I];
+			SET I = I + 1;
+		END WHILE;
+	END;
+
+	CREATE PROCEDURE CopyEntireMessage() BEGIN
+		SET OutputRoot = InputRoot;
+	END;
+END MODULE;
+
+
